@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piano Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .calculator {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .display {
+            background: #1a1a2e;
+            color: #00ff88;
+            font-size: 2.5rem;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: right;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            min-height: 80px;
+            overflow-x: auto;
+            box-shadow: inset 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        button {
+            padding: 25px;
+            font-size: 1.5rem;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .number {
+            background: linear-gradient(145deg, #f0f0f0, #e0e0e0);
+            color: #333;
+        }
+
+        .operator {
+            background: linear-gradient(145deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .equals {
+            background: linear-gradient(145deg, #00ff88, #00cc6a);
+            color: #1a1a2e;
+            grid-column: span 2;
+        }
+
+        .clear {
+            background: linear-gradient(145deg, #ff6b6b, #ee5a5a);
+            color: white;
+        }
+
+        .special {
+            background: linear-gradient(145deg, #ffd93d, #ffcc00);
+            color: #333;
+        }
+
+        .title {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h1 class="title">🎹 Piano Calculator</h1>
+        <div class="display" id="display">0</div>
+        <div class="buttons">
+            <button class="clear" onclick="clearDisplay()">C</button>
+            <button class="special" onclick="deleteLast()">⌫</button>
+            <button class="special" onclick="appendOperator('%')">%</button>
+            <button class="operator" onclick="appendOperator('/')">÷</button>
+            
+            <button class="number" onclick="appendNumber('7')">7</button>
+            <button class="number" onclick="appendNumber('8')">8</button>
+            <button class="number" onclick="appendNumber('9')">9</button>
+            <button class="operator" onclick="appendOperator('*')">×</button>
+            
+            <button class="number" onclick="appendNumber('4')">4</button>
+            <button class="number" onclick="appendNumber('5')">5</button>
+            <button class="number" onclick="appendNumber('6')">6</button>
+            <button class="operator" onclick="appendOperator('-')">−</button>
+            
+            <button class="number" onclick="appendNumber('1')">1</button>
+            <button class="number" onclick="appendNumber('2')">2</button>
+            <button class="number" onclick="appendNumber('3')">3</button>
+            <button class="operator" onclick="appendOperator('+')">+</button>
+            
+            <button class="number" onclick="appendNumber('0')">0</button>
+            <button class="number" onclick="appendNumber('.')">.</button>
+            <button class="equals" onclick="calculate()">=</button>
+        </div>
+    </div>
+
+    <script>
+        let audioContext = null;
+        let currentDisplay = '0';
+        let shouldResetDisplay = false;
+
+        // Initialize audio context on first user interaction
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // Play piano sound with different notes for different keys
+        function playPianoSound(keyType, value) {
+            initAudio();
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Different frequencies for different key types
+            let frequency;
+            const baseFreq = 261.63; // C4
+            
+            switch(keyType) {
+                case 'number':
+                    // Map numbers to musical notes (pentatonic scale)
+                    const noteMap = {
+                        '0': 523.25, // C5
+                        '1': 587.33, // D5
+                        '2': 659.25, // E5
+                        '3': 783.99, // G5
+                        '4': 880.00, // A5
+                        '5': 987.77, // B5
+                        '6': 1046.50, // C6
+                        '7': 1174.66, // D6
+                        '8': 1318.51, // E6
+                        '9': 1567.98, // G6
+                        '.': 1318.51  // E6
+                    };
+                    frequency = noteMap[value] || baseFreq;
+                    break;
+                case 'operator':
+                    // Operators get lower harmony notes
+                    const opMap = {
+                        '+': 329.63,  // E4
+                        '-': 349.23,  // F4
+                        '*': 392.00,  // G4
+                        '/': 440.00,  // A4
+                        '%': 493.88   // B4
+                    };
+                    frequency = opMap[value] || baseFreq;
+                    break;
+                case 'equals':
+                    // Equals plays a nice chord arpeggio
+                    playChord([523.25, 659.25, 783.99, 1046.50]);
+                    return;
+                case 'clear':
+                    frequency = 196.00; // G3 (lower tone)
+                    break;
+                case 'delete':
+                    frequency = 220.00; // A3
+                    break;
+                default:
+                    frequency = baseFreq;
+            }
+            
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            
+            // ADSR envelope for piano-like sound
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        // Play a chord (multiple notes)
+        function playChord(frequencies) {
+            frequencies.forEach((freq, index) => {
+                setTimeout(() => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                    
+                    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.8);
+                }, index * 50);
+            });
+        }
+
+        function updateDisplay() {
+            document.getElementById('display').textContent = currentDisplay;
+        }
+
+        function appendNumber(num) {
+            initAudio();
+            playPianoSound('number', num);
+            
+            if (shouldResetDisplay || currentDisplay === '0' && num !== '.') {
+                currentDisplay = num;
+                shouldResetDisplay = false;
+            } else {
+                if (num === '.' && currentDisplay.includes('.')) return;
+                currentDisplay += num;
+            }
+            updateDisplay();
+        }
+
+        function appendOperator(op) {
+            initAudio();
+            playPianoSound('operator', op);
+            
+            const lastChar = currentDisplay.slice(-1);
+            if (['+', '-', '*', '/', '%'].includes(lastChar)) {
+                currentDisplay = currentDisplay.slice(0, -1) + op;
+            } else {
+                currentDisplay += op;
+            }
+            shouldResetDisplay = false;
+            updateDisplay();
+        }
+
+        function clearDisplay() {
+            initAudio();
+            playPianoSound('clear');
+            currentDisplay = '0';
+            shouldResetDisplay = false;
+            updateDisplay();
+        }
+
+        function deleteLast() {
+            initAudio();
+            playPianoSound('delete');
+            if (currentDisplay.length > 1) {
+                currentDisplay = currentDisplay.slice(0, -1);
+            } else {
+                currentDisplay = '0';
+            }
+            updateDisplay();
+        }
+
+        function calculate() {
+            initAudio();
+            playPianoSound('equals');
+            
+            try {
+                // Replace % with /100 for calculation
+                let expression = currentDisplay.replace(/%/g, '/100');
+                const result = eval(expression);
+                
+                if (isFinite(result)) {
+                    currentDisplay = Number(result.toFixed(8)).toString();
+                } else {
+                    currentDisplay = 'Error';
+                }
+                shouldResetDisplay = true;
+            } catch (error) {
+                currentDisplay = 'Error';
+                shouldResetDisplay = true;
+            }
+            updateDisplay();
+        }
+
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') appendNumber(e.key);
+            else if (e.key === '.') appendNumber('.');
+            else if (['+', '-', '*', '/', '%'].includes(e.key)) appendOperator(e.key);
+            else if (e.key === 'Enter' || e.key === '=') calculate();
+            else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') clearDisplay();
+            else if (e.key === 'Backspace') deleteLast();
+        });
+    </script>
+</body>
+</html>
